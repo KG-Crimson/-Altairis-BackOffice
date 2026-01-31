@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./backend\Altairis.Api
+    ports:
+      - "5113:80"
+    volumes:
+      - ./backend:/app
+      - sqlite-data:/app/altairis.db
+    environment:
+      - DOTNET_RUNNING_IN_CONTAINER=true
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  sqlite-data:
