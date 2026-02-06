@@ -35,7 +35,7 @@
   opacity: 0.9;
 }
 
-.activeTab {
+.tabButtonActive {
   box-shadow: 0 0 5px rgba(0,0,0,0.3);
   transform: scale(1.05);
 }
@@ -77,7 +77,7 @@
   opacity: 0.85;
 }
 
-.delete {
+.buttonDelete {
   background-color: #ff4d4f;
 }
 
@@ -101,4 +101,31 @@
 
 .label {
   font-weight: bold;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.paginationButton {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #d36c87;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.paginationButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.paginationInfo {
+  font-size: 14px;
 }

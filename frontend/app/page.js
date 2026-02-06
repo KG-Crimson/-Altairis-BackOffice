@@ -4,10 +4,14 @@ import { useState, useEffect } from "react";
 import styles from "./Home.module.css";
 
 export default function Home() {
+  // Tamaño fijo para paginacion.
+  const pageSize = 10;
   const [activeTab, setActiveTab] = useState("hotels");
 
   // --- Hoteles ---
   const [hotels, setHotels] = useState([]);
+  const [hotelsPage, setHotelsPage] = useState(1);
+  const [hotelsTotal, setHotelsTotal] = useState(0);
   const [hotelIdEditing, setHotelIdEditing] = useState(null);
   const [hotelName, setHotelName] = useState("");
   const [hotelCity, setHotelCity] = useState("");
@@ -15,6 +19,8 @@ export default function Home() {
 
   // --- RoomTypes ---
   const [roomTypes, setRoomTypes] = useState([]);
+  const [roomTypesPage, setRoomTypesPage] = useState(1);
+  const [roomTypesTotal, setRoomTypesTotal] = useState(0);
   const [roomIdEditing, setRoomIdEditing] = useState(null);
   const [roomName, setRoomName] = useState("");
   const [roomCapacity, setRoomCapacity] = useState(1);
@@ -22,6 +28,8 @@ export default function Home() {
 
   // --- Bookings ---
   const [bookings, setBookings] = useState([]);
+  const [bookingsPage, setBookingsPage] = useState(1);
+  const [bookingsTotal, setBookingsTotal] = useState(0);
   const [bookingIdEditing, setBookingIdEditing] = useState(null);
   const [guestName, setGuestName] = useState("");
   const [checkIn, setCheckIn] = useState("");
@@ -31,39 +39,75 @@ export default function Home() {
 
   // --- Inventories ---
   const [inventories, setInventories] = useState([]);
+  const [inventoriesPage, setInventoriesPage] = useState(1);
+  const [inventoriesTotal, setInventoriesTotal] = useState(0);
   const [inventoryIdEditing, setInventoryIdEditing] = useState(null);
   const [inventoryDate, setInventoryDate] = useState("");
   const [inventoryRooms, setInventoryRooms] = useState(1);
   const [inventoryHotelId, setInventoryHotelId] = useState(1);
   const [inventoryRoomTypeId, setInventoryRoomTypeId] = useState(1);
 
-  // --- Fetch inicial ---
+  const parsePage = (data) => {
+    // Soporta respuestas antiguas (array) y nuevas (objeto paginado).
+    if (Array.isArray(data)) {
+      return { items: data, total: data.length, page: 1, pageSize: data.length };
+    }
+    return data ?? { items: [], total: 0, page: 1, pageSize };
+  };
+
+  const fetchHotels = async () => {
+    const res = await fetch(`http://localhost:5113/api/Hotels?page=${hotelsPage}&pageSize=${pageSize}`);
+    const data = parsePage(await res.json());
+    setHotels(data.items || []);
+    setHotelsTotal(data.total || 0);
+  };
+
+  const fetchRoomTypes = async () => {
+    const res = await fetch(`http://localhost:5113/api/RoomTypes?page=${roomTypesPage}&pageSize=${pageSize}`);
+    const data = parsePage(await res.json());
+    setRoomTypes(data.items || []);
+    setRoomTypesTotal(data.total || 0);
+  };
+
+  const fetchBookings = async () => {
+    const res = await fetch(`http://localhost:5113/api/Bookings?page=${bookingsPage}&pageSize=${pageSize}`);
+    const data = parsePage(await res.json());
+    setBookings(data.items || []);
+    setBookingsTotal(data.total || 0);
+  };
+
+  const fetchInventories = async () => {
+    const res = await fetch(`http://localhost:5113/api/Inventories?page=${inventoriesPage}&pageSize=${pageSize}`);
+    const data = parsePage(await res.json());
+    setInventories(data.items || []);
+    setInventoriesTotal(data.total || 0);
+  };
+
+  // --- Fetch inicial y paginado ---
   useEffect(() => {
-    fetch("http://localhost:5113/api/Hotels").then(r => r.json()).then(setHotels);
-    fetch("http://localhost:5113/api/RoomTypes").then(r => r.json()).then(setRoomTypes);
-    fetch("http://localhost:5113/api/Bookings").then(r => r.json()).then(setBookings);
-    fetch("http://localhost:5113/api/Inventories").then(r => r.json()).then(setInventories);
-  }, []);
+    fetchHotels();
+    fetchRoomTypes();
+    fetchBookings();
+    fetchInventories();
+  }, [hotelsPage, roomTypesPage, bookingsPage, inventoriesPage]);
 
   // --- Funciones de Hoteles ---
   const submitHotel = async () => {
     if (hotelIdEditing) {
-      const res = await fetch(`http://localhost:5113/api/Hotels/${hotelIdEditing}`, {
+      await fetch(`http://localhost:5113/api/Hotels/${hotelIdEditing}`, {
         method: "PUT",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({id: hotelIdEditing, name: hotelName, city: hotelCity, country: hotelCountry})
       });
-      const updatedHotel = await res.json();
-      setHotels(hotels.map(h => h.id === hotelIdEditing ? updatedHotel : h));
+      await fetchHotels();
       setHotelIdEditing(null);
     } else {
-      const res = await fetch("http://localhost:5113/api/Hotels", {
+      await fetch("http://localhost:5113/api/Hotels", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({name: hotelName, city: hotelCity, country: hotelCountry})
       });
-      const data = await res.json();
-      setHotels([...hotels, data]);
+      await fetchHotels();
     }
     setHotelName(""); setHotelCity(""); setHotelCountry("");
   };
@@ -75,28 +119,26 @@ export default function Home() {
   };
   const deleteHotel = async (id) => {
     await fetch(`http://localhost:5113/api/Hotels/${id}`, {method:"DELETE"});
-    setHotels(hotels.filter(h => h.id !== id));
+    await fetchHotels();
   };
 
   // --- Funciones RoomTypes ---
   const submitRoomType = async () => {
     if (roomIdEditing) {
-      const res = await fetch(`http://localhost:5113/api/RoomTypes/${roomIdEditing}`, {
+      await fetch(`http://localhost:5113/api/RoomTypes/${roomIdEditing}`, {
         method: "PUT",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({id: roomIdEditing, name: roomName, capacity: roomCapacity, hotelId: roomHotelId})
       });
-      const updated = await res.json();
-      setRoomTypes(roomTypes.map(r => r.id === roomIdEditing ? updated : r));
+      await fetchRoomTypes();
       setRoomIdEditing(null);
     } else {
-      const res = await fetch("http://localhost:5113/api/RoomTypes", {
+      await fetch("http://localhost:5113/api/RoomTypes", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({name: roomName, capacity: roomCapacity, hotelId: roomHotelId})
       });
-      const data = await res.json();
-      setRoomTypes([...roomTypes, data]);
+      await fetchRoomTypes();
     }
     setRoomName(""); setRoomCapacity(1); setRoomHotelId(1);
   };
@@ -108,13 +150,13 @@ export default function Home() {
   };
   const deleteRoomType = async (id) => {
     await fetch(`http://localhost:5113/api/RoomTypes/${id}`, {method:"DELETE"});
-    setRoomTypes(roomTypes.filter(r => r.id !== id));
+    await fetchRoomTypes();
   };
 
   // --- Funciones Bookings ---
   const submitBooking = async () => {
     if (bookingIdEditing) {
-      const res = await fetch(`http://localhost:5113/api/Bookings/${bookingIdEditing}`, {
+      await fetch(`http://localhost:5113/api/Bookings/${bookingIdEditing}`, {
         method:"PUT",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
@@ -122,19 +164,17 @@ export default function Home() {
           guestName, checkIn, checkOut, hotelId: bookingHotelId, roomTypeId: bookingRoomTypeId, status: "Pending"
         })
       });
-      const updated = await res.json();
-      setBookings(bookings.map(b => b.id === bookingIdEditing ? updated : b));
+      await fetchBookings();
       setBookingIdEditing(null);
     } else {
-      const res = await fetch("http://localhost:5113/api/Bookings", {
+      await fetch("http://localhost:5113/api/Bookings", {
         method:"POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
           guestName, checkIn, checkOut, hotelId: bookingHotelId, roomTypeId: bookingRoomTypeId, status: "Pending"
         })
       });
-      const data = await res.json();
-      setBookings([...bookings, data]);
+      await fetchBookings();
     }
     setGuestName(""); setCheckIn(""); setCheckOut(""); setBookingHotelId(1); setBookingRoomTypeId(1);
   };
@@ -148,13 +188,13 @@ export default function Home() {
   };
   const deleteBooking = async (id) => {
     await fetch(`http://localhost:5113/api/Bookings/${id}`, {method:"DELETE"});
-    setBookings(bookings.filter(b => b.id !== id));
+    await fetchBookings();
   };
 
   // --- Funciones Inventories ---
   const submitInventory = async () => {
     if (inventoryIdEditing) {
-      const res = await fetch(`http://localhost:5113/api/Inventories/${inventoryIdEditing}`, {
+      await fetch(`http://localhost:5113/api/Inventories/${inventoryIdEditing}`, {
         method:"PUT",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
@@ -162,19 +202,17 @@ export default function Home() {
           date: inventoryDate, availableRooms: inventoryRooms, hotelId: inventoryHotelId, roomTypeId: inventoryRoomTypeId
         })
       });
-      const updated = await res.json();
-      setInventories(inventories.map(i => i.id === inventoryIdEditing ? updated : i));
+      await fetchInventories();
       setInventoryIdEditing(null);
     } else {
-      const res = await fetch("http://localhost:5113/api/Inventories", {
+      await fetch("http://localhost:5113/api/Inventories", {
         method:"POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
           date: inventoryDate, availableRooms: inventoryRooms, hotelId: inventoryHotelId, roomTypeId: inventoryRoomTypeId
         })
       });
-      const data = await res.json();
-      setInventories([...inventories, data]);
+      await fetchInventories();
     }
     setInventoryDate(""); setInventoryRooms(1); setInventoryHotelId(1); setInventoryRoomTypeId(1);
   };
@@ -187,7 +225,7 @@ export default function Home() {
   };
   const deleteInventory = async (id) => {
     await fetch(`http://localhost:5113/api/Inventories/${id}`, {method:"DELETE"});
-    setInventories(inventories.filter(i => i.id !== id));
+    await fetchInventories();
   };
 
   return (
@@ -202,7 +240,7 @@ export default function Home() {
         <button className={`${styles.tabButton} ${activeTab==="inventories"?styles.tabButtonActive:""}`} onClick={()=>setActiveTab("inventories")}>Inventarios</button>
       </div>
 
-      {/* --- Sección activa --- */}
+      {/* --- Seccion activa --- */}
       {activeTab === "hotels" && (
         <div className={styles.section}>
           <div className={styles.form}>
@@ -229,6 +267,11 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+          <div className={styles.pagination}>
+            <button className={styles.paginationButton} onClick={() => setHotelsPage(p => Math.max(1, p - 1))} disabled={hotelsPage <= 1}>Anterior</button>
+            <div className={styles.paginationInfo}>Pagina {hotelsPage} de {Math.max(1, Math.ceil(hotelsTotal / pageSize))}</div>
+            <button className={styles.paginationButton} onClick={() => setHotelsPage(p => Math.min(Math.max(1, Math.ceil(hotelsTotal / pageSize)), p + 1))} disabled={hotelsPage >= Math.max(1, Math.ceil(hotelsTotal / pageSize))}>Siguiente</button>
+          </div>
         </div>
       )}
 
@@ -236,8 +279,8 @@ export default function Home() {
         <div className={styles.section}>
           <div className={styles.form}>
             <input className={styles.input} placeholder="Nombre" value={roomName} onChange={e=>setRoomName(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="Capacidad" value={roomCapacity} onChange={e=>setRoomCapacity(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="Hotel ID" value={roomHotelId} onChange={e=>setRoomHotelId(e.target.value)} />
+            <input className={styles.input} type="number" placeholder="Capacidad" value={roomCapacity} onChange={e=>setRoomCapacity(Number(e.target.value))} />
+            <input className={styles.input} type="number" placeholder="Hotel ID" value={roomHotelId} onChange={e=>setRoomHotelId(Number(e.target.value))} />
             <button className={styles.button} onClick={submitRoomType}>
               {roomIdEditing ? "Actualizar RoomType" : "Crear RoomType"}
             </button>
@@ -258,6 +301,11 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+          <div className={styles.pagination}>
+            <button className={styles.paginationButton} onClick={() => setRoomTypesPage(p => Math.max(1, p - 1))} disabled={roomTypesPage <= 1}>Anterior</button>
+            <div className={styles.paginationInfo}>Pagina {roomTypesPage} de {Math.max(1, Math.ceil(roomTypesTotal / pageSize))}</div>
+            <button className={styles.paginationButton} onClick={() => setRoomTypesPage(p => Math.min(Math.max(1, Math.ceil(roomTypesTotal / pageSize)), p + 1))} disabled={roomTypesPage >= Math.max(1, Math.ceil(roomTypesTotal / pageSize))}>Siguiente</button>
+          </div>
         </div>
       )}
 
@@ -267,8 +315,8 @@ export default function Home() {
             <input className={styles.input} placeholder="Guest Name" value={guestName} onChange={e=>setGuestName(e.target.value)} />
             <input className={styles.input} type="date" value={checkIn} onChange={e=>setCheckIn(e.target.value)} />
             <input className={styles.input} type="date" value={checkOut} onChange={e=>setCheckOut(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="Hotel ID" value={bookingHotelId} onChange={e=>setBookingHotelId(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="RoomType ID" value={bookingRoomTypeId} onChange={e=>setBookingRoomTypeId(e.target.value)} />
+            <input className={styles.input} type="number" placeholder="Hotel ID" value={bookingHotelId} onChange={e=>setBookingHotelId(Number(e.target.value))} />
+            <input className={styles.input} type="number" placeholder="RoomType ID" value={bookingRoomTypeId} onChange={e=>setBookingRoomTypeId(Number(e.target.value))} />
             <button className={styles.button} onClick={submitBooking}>
               {bookingIdEditing ? "Actualizar Booking" : "Crear Booking"}
             </button>
@@ -291,6 +339,11 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+          <div className={styles.pagination}>
+            <button className={styles.paginationButton} onClick={() => setBookingsPage(p => Math.max(1, p - 1))} disabled={bookingsPage <= 1}>Anterior</button>
+            <div className={styles.paginationInfo}>Pagina {bookingsPage} de {Math.max(1, Math.ceil(bookingsTotal / pageSize))}</div>
+            <button className={styles.paginationButton} onClick={() => setBookingsPage(p => Math.min(Math.max(1, Math.ceil(bookingsTotal / pageSize)), p + 1))} disabled={bookingsPage >= Math.max(1, Math.ceil(bookingsTotal / pageSize))}>Siguiente</button>
+          </div>
         </div>
       )}
 
@@ -298,9 +351,9 @@ export default function Home() {
         <div className={styles.section}>
           <div className={styles.form}>
             <input className={styles.input} type="date" value={inventoryDate} onChange={e=>setInventoryDate(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="Available Rooms" value={inventoryRooms} onChange={e=>setInventoryRooms(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="Hotel ID" value={inventoryHotelId} onChange={e=>setInventoryHotelId(e.target.value)} />
-            <input className={styles.input} type="number" placeholder="RoomType ID" value={inventoryRoomTypeId} onChange={e=>setInventoryRoomTypeId(e.target.value)} />
+            <input className={styles.input} type="number" placeholder="Available Rooms" value={inventoryRooms} onChange={e=>setInventoryRooms(Number(e.target.value))} />
+            <input className={styles.input} type="number" placeholder="Hotel ID" value={inventoryHotelId} onChange={e=>setInventoryHotelId(Number(e.target.value))} />
+            <input className={styles.input} type="number" placeholder="RoomType ID" value={inventoryRoomTypeId} onChange={e=>setInventoryRoomTypeId(Number(e.target.value))} />
             <button className={styles.button} onClick={submitInventory}>
               {inventoryIdEditing ? "Actualizar Inventory" : "Crear Inventory"}
             </button>
@@ -322,6 +375,11 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+          <div className={styles.pagination}>
+            <button className={styles.paginationButton} onClick={() => setInventoriesPage(p => Math.max(1, p - 1))} disabled={inventoriesPage <= 1}>Anterior</button>
+            <div className={styles.paginationInfo}>Pagina {inventoriesPage} de {Math.max(1, Math.ceil(inventoriesTotal / pageSize))}</div>
+            <button className={styles.paginationButton} onClick={() => setInventoriesPage(p => Math.min(Math.max(1, Math.ceil(inventoriesTotal / pageSize)), p + 1))} disabled={inventoriesPage >= Math.max(1, Math.ceil(inventoriesTotal / pageSize))}>Siguiente</button>
+          </div>
         </div>
       )}
 

@@ -17,19 +17,31 @@ namespace Altairis.Api.Controllers
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Hotel>>> GetHotels()
+    public async Task<ActionResult> GetHotels([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        return await _context.Hotels
-                             .Include(h => h.RoomTypes)
-                             .Include(h => h.Bookings)
-                             .Include(h => h.Inventories)
-                             .ToListAsync();
+        // Paginacion basica para listas grandes.
+        var size = Math.Clamp(pageSize, 1, 200);
+        var currentPage = Math.Max(page, 1);
+        var total = await _context.Hotels.CountAsync();
+
+        var items = await _context.Hotels
+                                  .AsNoTracking()
+                                  .Include(h => h.RoomTypes)
+                                  .Include(h => h.Bookings)
+                                  .Include(h => h.Inventories)
+                                  .OrderBy(h => h.Id)
+                                  .Skip((currentPage - 1) * size)
+                                  .Take(size)
+                                  .ToListAsync();
+
+        return Ok(new { items, total, page = currentPage, pageSize = size });
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Hotel>> GetHotel(int id)
     {
         var hotel = await _context.Hotels
+                                  .AsNoTracking()
                                   .Include(h => h.RoomTypes)
                                   .Include(h => h.Bookings)
                                   .Include(h => h.Inventories)
@@ -63,7 +75,13 @@ namespace Altairis.Api.Controllers
             else throw;
         }
 
-        return NoContent();
+        var updated = await _context.Hotels
+                                    .AsNoTracking()
+                                    .Include(h => h.RoomTypes)
+                                    .Include(h => h.Bookings)
+                                    .Include(h => h.Inventories)
+                                    .FirstOrDefaultAsync(h => h.Id == id);
+        return Ok(updated);
     }
 
     [HttpDelete("{id}")]

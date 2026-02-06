@@ -1,20 +1,24 @@
 services:
   backend:
-    build: ./backend\Altairis.Api
+    build:
+      context: ./backend/Altairis.Api
+      dockerfile: Dockerfile
     ports:
-      - "5113:80"
-    volumes:
-      - ./backend:/app
-      - sqlite-data:/app/altairis.db
+      - "5113:8080"
     environment:
       - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - altairis-data:/app/data
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
+    depends_on:
+      - backend
 
 volumes:
-  sqlite-data:
+  altairis-data:
+
